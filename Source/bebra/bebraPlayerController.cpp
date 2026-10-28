@@ -208,18 +208,38 @@ void AbebraPlayerController::CastSelectedCard()
 	{
 		SetSelectedIndex(INDEX_NONE);
 		return;
+	}	
+	
+	UCardData* Card = Hand[SelectedHandIndex];
+	APawn* ControlledPawn = GetPawn();
+	if (!Card || !ControlledPawn)
+	{
+		return;
 	}
 	
 	FHitResult Hit;
-	FVector TargetLocation = FVector::ZeroVector;
-	if (GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, true, Hit))
+	if  (!GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, true, Hit))
 	{
-		TargetLocation = Hit.Location;
+		UE_LOG(LogTemp, Warning, TEXT("No target under cursor"));
+		return;
 	}
 	
-	UCardData* Card = Hand[SelectedHandIndex];
-
-	UStatsComponent* Stats = GetPawn() ? GetPawn() ->FindComponentByClass<UStatsComponent>() : nullptr;
+	FVector TargetLocation = Hit.Location;
+	
+	if (Card->Range > 0.f)
+	{
+		const FVector Origin = ControlledPawn->GetActorLocation();
+		FVector Offset = TargetLocation - Origin;
+		Offset.Z = 0.f;
+		
+		if (Offset.Size() > Card->Range)
+		{
+			const FVector Clamped = Origin + Offset.GetSafeNormal() * Card->Range;
+			TargetLocation = FVector(Clamped.X, Clamped.Y, Clamped.Z);
+		}
+	}
+	
+	UStatsComponent* Stats = ControlledPawn->FindComponentByClass<UStatsComponent>();
 	if (!Stats)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("No stats component on pawn"));
@@ -229,21 +249,21 @@ void AbebraPlayerController::CastSelectedCard()
 	if (!Stats->TrySpendMana(Card->ManaCost))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Not enough mana for %s"), *Card->CardName.ToString());
-		return;	
+		return;
 	}
 	
-	Stats -> ReceiveDamage(Card->SelfDamage);
+	Stats->ReceiveDamage(Card->SelfDamage);
 	
 	UE_LOG(LogTemp, Warning, TEXT("Cast %s at %s"), *Card->CardName.ToString(), *TargetLocation.ToString());
 	
 	FCardCastContext Context;
-	Context.Caster = GetPawn();
+	Context.Caster = ControlledPawn;
 	Context.Card = Card;
 	Context.TargetLocation = TargetLocation;
 	
-	for  (UCardEffect* Effect : Card->Effects)
-		if (Effect)
+	for (UCardEffect* Effect : Card->Effects)
 	{
+		if (Effect)
 		{
 			Effect->Execute(Context);
 		}

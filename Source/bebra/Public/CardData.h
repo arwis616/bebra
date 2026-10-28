@@ -42,5 +42,8 @@ public:
 	
 	UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Card")
 	TArray<TObjectPtr<UCardEffect>> Effects;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card", meta = (ClampMin = 0))
+	float Range = 800.f;
 };
 
