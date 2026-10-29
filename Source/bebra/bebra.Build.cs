@@ -27,13 +27,7 @@ public class bebra : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
 		PublicIncludePaths.AddRange(new string[] {
-			"bebra",
-			"bebra/Variant_Strategy",
-			"bebra/Variant_Strategy/UI",
-			"bebra/Variant_TwinStick",
-			"bebra/Variant_TwinStick/AI",
-			"bebra/Variant_TwinStick/Gameplay",
-			"bebra/Variant_TwinStick/UI"
+			"bebra"
 		});
 
 		// Uncomment if you are using Slate UI

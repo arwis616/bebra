@@ -19,7 +19,7 @@ public:
 	float MaxHealth = 100.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats", meta = (ClampMin = "1"))
-	float MaxMana = 10.f;
+	float MaxMana = 150.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats", meta = (ClampMin = "0"))
 	float ManaRegenPerSecond = 0.5f;
