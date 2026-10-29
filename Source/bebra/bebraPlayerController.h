@@ -5,13 +5,15 @@
 #include "GameFramework/PlayerController.h"
 #include "DeckComponent.h"
 #include "CardData.h"
+#include "Engine/TimerHandle.h"
 #include "bebraPlayerController.generated.h"
 
 class UNiagaraSystem;
 class UInputMappingContext;
 class UInputAction;
 class UPathFollowingComponent;
-class UDeckComponent;
+class UHudWidget;
+class UStatsComponent;
 struct FInputActionValue;
 
 UENUM(BlueprintType)
@@ -22,8 +24,6 @@ enum class ECastMode : uint8
 };
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
-
-class UHudWidget;
 
 UCLASS(abstract)
 class AbebraPlayerController : public APlayerController
@@ -128,6 +128,21 @@ protected:
 	void CastSelectedCard();
 	UDeckComponent* GetDeck() const;
 	void SetSelectedIndex(int32 NewIndex);
+	
+	UFUNCTION()
+	void HandlePlayerDeath();
+	
+	void RestartLevel();
+	
+	UPROPERTY(EditAnywhere, Category = "Game", meta = (ClampMin = "0"))
+	float RestartDelay = 5.0f;
+	
+	bool bPlayerDead = false;
+	
+	FTimerHandle RestartTimer;
+	
+	UPROPERTY()
+	TObjectPtr<UStatsComponent> BoundStats;
 };
 
 

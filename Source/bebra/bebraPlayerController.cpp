@@ -20,6 +20,7 @@
 #include "StatsComponent.h"
 #include "Blueprint/UserWidget.h"
 #include "CardEffect.h"
+#include "Kismet/GameplayStatics.h"
 
 AbebraPlayerController::AbebraPlayerController()
 {
@@ -174,6 +175,11 @@ UDeckComponent* AbebraPlayerController::GetDeck() const
 
 void AbebraPlayerController::OnCardSlotPressed(int32 SlotIndex)
 {
+	if (bPlayerDead)
+	{
+		return;
+	}
+	
 	UDeckComponent* Deck = GetDeck();
 	if (!Deck || !Deck->GetHand().IsValidIndex(SlotIndex))
 	{
@@ -191,7 +197,10 @@ void AbebraPlayerController::OnCardSlotPressed(int32 SlotIndex)
 
 void AbebraPlayerController::OnConfirmCast()
 {
-	UE_LOG(LogTemp, Warning, TEXT("OnConfirmCast called"));
+	if (bPlayerDead)
+	{
+		return;
+	}
 	CastSelectedCard();
 }
 
@@ -281,6 +290,12 @@ void AbebraPlayerController::OnCancelCast()
 
 void AbebraPlayerController::OnMove(const FInputActionValue& Value)
 {
+	
+	if (bPlayerDead)
+	{
+		return;
+	}
+	
 	const FVector2D Input = Value.Get<FVector2D>();
 	
 	APawn* ControlledPawn = GetPawn();
@@ -316,7 +331,21 @@ void AbebraPlayerController::OnPossess(APawn* InPawn)
 	{
 		HudWidget->InitForPawn(InPawn);
 	}
+	
+	if (BoundStats)
+	{
+		BoundStats->OnDied.RemoveDynamic(this, &AbebraPlayerController::HandlePlayerDeath);
+		BoundStats = nullptr;
+	}
+	
+	bPlayerDead = false;
+	BoundStats = InPawn ? InPawn->FindComponentByClass<UStatsComponent>() : nullptr;
+	if (BoundStats)
+	{
+		BoundStats->OnDied.AddDynamic(this, &AbebraPlayerController::HandlePlayerDeath);
+	}
 }
+
 
 void AbebraPlayerController::SetSelectedIndex(int32 NewIndex)
 {
@@ -324,3 +353,23 @@ void AbebraPlayerController::SetSelectedIndex(int32 NewIndex)
 	SelectedHandIndex = NewIndex;
 	OnCardSelectionChanged.Broadcast(SelectedHandIndex);
 }
+
+void AbebraPlayerController::HandlePlayerDeath()
+{
+	bPlayerDead = true;
+	SetSelectedIndex(INDEX_NONE);
+	StopMovement();
+	
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, RestartDelay, FColor::Red,TEXT("Dead"));
+	}
+	
+	GetWorldTimerManager().SetTimer(RestartTimer, this, &AbebraPlayerController::RestartLevel, RestartDelay, false);
+}
+
+void AbebraPlayerController::RestartLevel()
+{
+	UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)), true);
+}
+
