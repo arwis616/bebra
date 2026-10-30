@@ -5,6 +5,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "Components/WidgetComponent.h"
+#include "EnemyHealthBar.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -12,6 +14,11 @@ AEnemyCharacter::AEnemyCharacter()
 
 	Stats = CreateDefaultSubobject<UStatsComponent>(TEXT("Stats"));
 
+	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarWidget"));
+	HealthBarComponent->SetupAttachment(RootComponent);
+	HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
+	HealthBarComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	HealthBarComponent->SetDrawAtDesiredSize(true);
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
@@ -20,6 +27,12 @@ AEnemyCharacter::AEnemyCharacter()
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	HealthBarComponent->InitWidget();
+	if (UEnemyHealthBar* Bar = Cast<UEnemyHealthBar>(HealthBarComponent->GetUserWidgetObject())) 
+	{
+		Bar->InitForStats(Stats);	
+	}
 
 	GetCharacterMovement()->MaxWalkSpeed = ChaseSpeed;
 	Stats->OnDied.AddDynamic(this, &AEnemyCharacter::HandleDeath);
@@ -88,10 +101,6 @@ void AEnemyCharacter::OnHitByElement_Implementation(ECardElement Element, float 
 		GetCharacterMovement()->MaxWalkSpeed = ChaseSpeed * SlowMultiplier;
 		GetWorldTimerManager().SetTimer(SlowTimer, this, &AEnemyCharacter::EndSlow, SlowDuration, false);
 	}
-
-	DrawDebugString(GetWorld(), GetActorLocation() + FVector(0.f, 0.f, 150.f),
-		FString::Printf(TEXT("%.0f / %.0f"), Stats->GetHealth(), Stats->MaxHealth),
-		nullptr, FColor::Red, 1.5f);
 }
 
 void AEnemyCharacter::EndSlow()

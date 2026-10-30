@@ -6,6 +6,7 @@
 #include "EnemyCharacter.generated.h"
 
 class UStatsComponent;
+class UWidgetComponent;
 
 UCLASS()
 class BEBRA_API AEnemyCharacter : public ACharacter, public IElementReactive
@@ -52,7 +53,10 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Enemy|Ice", meta = (ClampMin = "0"))
 	float SlowDuration = 3.f;
-
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+	TObjectPtr<UWidgetComponent> HealthBarComponent;
+	
 private:
 	FTimerHandle SlowTimer;
 	float LastAttackTime = -1000.f;

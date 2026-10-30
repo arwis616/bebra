@@ -21,6 +21,9 @@
 #include "Blueprint/UserWidget.h"
 #include "CardEffect.h"
 #include "Kismet/GameplayStatics.h"
+#include "DeathScreenWidget.h"
+#include "SettingsWidget.h"
+#include "GameSettingsSave.h"
 
 AbebraPlayerController::AbebraPlayerController()
 {
@@ -84,6 +87,10 @@ void AbebraPlayerController::SetupInputComponent()
 			if (MoveAction)
 			{
 				EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AbebraPlayerController::OnMove);
+			}
+			if (SettingsAction)
+			{
+				EnhancedInputComponent->BindAction(SettingsAction, ETriggerEvent::Started, this, &AbebraPlayerController::OpenSettings);
 			}
 		}
 		
@@ -318,6 +325,13 @@ void AbebraPlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 	
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
+	SetInputMode(InputMode);
+	
+	LoadCastSettings();
+	
 	if (HudWidgetClass && !HudWidget)
 	{
 		HudWidget = CreateWidget<UHudWidget>(this, HudWidgetClass);
@@ -359,17 +373,109 @@ void AbebraPlayerController::HandlePlayerDeath()
 	bPlayerDead = true;
 	SetSelectedIndex(INDEX_NONE);
 	StopMovement();
-	
-	if (GEngine)
+	SetIgnoreMoveInput(true);
+
+	if (DeathScreenClass && !DeathScreenWidget)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, RestartDelay, FColor::Red,TEXT("Dead"));
+		DeathScreenWidget = CreateWidget<UDeathScreenWidget>(this, DeathScreenClass);
+		if (DeathScreenWidget)
+		{
+			DeathScreenWidget->OnRestartRequested.AddDynamic(this, &AbebraPlayerController::RestartCurrentLevel);
+			DeathScreenWidget->AddToViewport(100);
+		}
 	}
-	
-	GetWorldTimerManager().SetTimer(RestartTimer, this, &AbebraPlayerController::RestartLevel, RestartDelay, false);
+
+	if (DeathScreenWidget)
+	{
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(DeathScreenWidget->TakeWidget());
+		SetInputMode(InputMode);
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(RestartTimer, this, &AbebraPlayerController::RestartCurrentLevel, RestartDelay, false);
+	}
 }
 
-void AbebraPlayerController::RestartLevel()
+void AbebraPlayerController::RestartCurrentLevel()
 {
-	UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)), true);
+	UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this, true)));
+}
+
+static const FString CastSettingsSlot = TEXT("Settings");
+
+void AbebraPlayerController::LoadCastSettings()
+{
+	if (!UGameplayStatics::DoesSaveGameExist(CastSettingsSlot, 0))
+	{
+		return;
+	}
+
+	if (UGameSettingsSave* Save = Cast<UGameSettingsSave>(UGameplayStatics::LoadGameFromSlot(CastSettingsSlot, 0)))
+	{
+		CastMode = Save->bQuickCast ? ECastMode::Quick : ECastMode::Normal;
+	}
+}
+
+void AbebraPlayerController::SaveCastSettings()
+{
+	UGameSettingsSave* Save = Cast<UGameSettingsSave>(UGameplayStatics::CreateSaveGameObject(UGameSettingsSave::StaticClass()));
+	if (Save)
+	{
+		Save->bQuickCast = (CastMode == ECastMode::Quick);
+		UGameplayStatics::SaveGameToSlot(Save, CastSettingsSlot, 0);
+	}
+}
+
+void AbebraPlayerController::OpenSettings()
+{
+	UE_LOG(LogTemp, Warning, TEXT("OpenSettings: dead=%d widget=%s class=%s"),
+	bPlayerDead ? 1 : 0, *GetNameSafe(SettingsWidget), *GetNameSafe(SettingsWidgetClass.Get()));
+	
+	if (bPlayerDead || SettingsWidget || !SettingsWidgetClass)
+	{
+		return;
+	}
+
+	SettingsWidget = CreateWidget<USettingsWidget>(this, SettingsWidgetClass);
+	if (!SettingsWidget)
+	{
+		return;
+	}
+
+	SettingsWidget->SetQuickCast(CastMode == ECastMode::Quick);
+	SettingsWidget->OnQuickCastToggled.AddDynamic(this, &AbebraPlayerController::HandleQuickCastToggled);
+	SettingsWidget->OnCloseRequested.AddDynamic(this, &AbebraPlayerController::CloseSettings);
+	SettingsWidget->AddToViewport(50);
+
+	SetSelectedIndex(INDEX_NONE);
+
+	FInputModeUIOnly InputMode;
+	InputMode.SetWidgetToFocus(SettingsWidget->TakeWidget());
+	SetInputMode(InputMode);
+
+	UGameplayStatics::SetGamePaused(this, true);
+}
+
+void AbebraPlayerController::CloseSettings()
+{
+	UGameplayStatics::SetGamePaused(this, false);
+
+	if (SettingsWidget)
+	{
+		SettingsWidget->RemoveFromParent();
+		SettingsWidget = nullptr;
+	}
+
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
+	SetInputMode(InputMode);
+}
+
+void AbebraPlayerController::HandleQuickCastToggled(bool bQuickCast)
+{
+	CastMode = bQuickCast ? ECastMode::Quick : ECastMode::Normal;
+	SaveCastSettings();
 }
 

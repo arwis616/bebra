@@ -15,6 +15,8 @@ class UPathFollowingComponent;
 class UHudWidget;
 class UStatsComponent;
 struct FInputActionValue;
+class UDeathScreenWidget;
+class USettingsWidget;
 
 UENUM(BlueprintType)
 enum class ECastMode : uint8
@@ -98,6 +100,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UInputAction> MoveAction;
 	
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UDeathScreenWidget> DeathScreenClass;
+
+	UPROPERTY()
+	TObjectPtr<UDeathScreenWidget> DeathScreenWidget;
+	
 	void OnMove(const FInputActionValue& Value);
 
 public:
@@ -132,7 +140,8 @@ protected:
 	UFUNCTION()
 	void HandlePlayerDeath();
 	
-	void RestartLevel();
+	UFUNCTION()
+	void RestartCurrentLevel();
 	
 	UPROPERTY(EditAnywhere, Category = "Game", meta = (ClampMin = "0"))
 	float RestartDelay = 5.0f;
@@ -143,6 +152,26 @@ protected:
 	
 	UPROPERTY()
 	TObjectPtr<UStatsComponent> BoundStats;
+	
+	UPROPERTY(EditAnywhere, Category = "Cards|Input")
+	TObjectPtr<UInputAction> SettingsAction;
+    
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<USettingsWidget> SettingsWidgetClass;
+    
+	UPROPERTY()
+	TObjectPtr<USettingsWidget> SettingsWidget;
+    
+	void OpenSettings();
+    
+	UFUNCTION()
+	void CloseSettings();
+    
+	UFUNCTION()
+	void HandleQuickCastToggled(bool bQuickCast);
+    
+	void LoadCastSettings();
+	void SaveCastSettings();
 };
 
 
