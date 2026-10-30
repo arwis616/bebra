@@ -44,6 +44,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Stats")
 	void ReceiveDamage(float Amount);
+	
+	UFUNCTION(BlueprintCallable, Category = "Stats")
+	void Heal(float Amount);
 
 protected:
 	virtual void BeginPlay() override;

@@ -45,5 +45,8 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card", meta = (ClampMin = 0))
 	float Range = 800.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card")
+	bool bRequiresTarget = true;
 };
 

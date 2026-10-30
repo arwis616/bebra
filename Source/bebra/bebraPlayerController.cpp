@@ -233,25 +233,29 @@ void AbebraPlayerController::CastSelectedCard()
 		return;
 	}
 	
-	FHitResult Hit;
-	if  (!GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, true, Hit))
+	FVector TargetLocation = ControlledPawn->GetActorLocation();
+	if (Card->bRequiresTarget)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No target under cursor"));
-		return;
-	}
-	
-	FVector TargetLocation = Hit.Location;
-	
-	if (Card->Range > 0.f)
-	{
-		const FVector Origin = ControlledPawn->GetActorLocation();
-		FVector Offset = TargetLocation - Origin;
-		Offset.Z = 0.f;
-		
-		if (Offset.Size() > Card->Range)
+		FHitResult Hit;
+		if  (!GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, true, Hit))
 		{
-			const FVector Clamped = Origin + Offset.GetSafeNormal() * Card->Range;
-			TargetLocation = FVector(Clamped.X, Clamped.Y, Clamped.Z);
+			UE_LOG(LogTemp, Warning, TEXT("No target under cursor"));
+			return;
+		}
+		
+		TargetLocation = Hit.Location;
+		
+		if (Card->Range > 0.f)
+		{
+			const FVector Origin = ControlledPawn->GetActorLocation();
+			FVector Offset = TargetLocation - Origin;
+			Offset.Z = 0.f;
+			
+			if (Offset.Size() > Card->Range)
+			{
+				const FVector Clamped = Origin + Offset.GetSafeNormal() * Card->Range;
+				TargetLocation = FVector(Clamped.X, Clamped.Y, Clamped.Z);
+			}
 		}
 	}
 	

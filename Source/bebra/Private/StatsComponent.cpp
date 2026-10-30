@@ -55,3 +55,13 @@ void UStatsComponent::ReceiveDamage(float Amount)
 		OnDied.Broadcast();
 	}
 }
+void UStatsComponent::Heal(float Amount)
+{
+	if (bDead || Amount <= 0.f)
+	{
+		return;
+	}
+	
+	Health = FMath::Min(Health + Amount, MaxHealth);
+	OnStatsChanged.Broadcast();
+}
